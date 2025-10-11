@@ -205,6 +205,21 @@
             color: white;
         }
 
+        .header-actions { display: flex; gap: 10px; }
+
+        .mic-status {
+          color: #666;
+          font-size: 0.9rem;
+          margin: 8px 0 0 0;
+        }
+
+        .mic-listening {
+          background: #ff6b9d;
+          color: #fff;
+          border-color: #ff6b9d;
+        }
+
+
         .editor-container {
             background: white;
             border: 4px solid #ff6b9d;
@@ -397,11 +412,16 @@
                     <span class="timer" id="timer">0:00</span>
                     <span class="word-count" id="wordCount">0 words</span>
                 </div>
-            <div class="header-actions">
+        <div class="header-actions">
+                    <button class="btn" id="micBtn" onclick="toggleVoice()">🎤 Voice</button>
                     <button class="btn" onclick="exportTxt()">Export .txt</button>
-                    <button class="btn btn-primary" onclick="saveDraft()">Save Draft</button>
-                  </div>
-            </div>
+                      <button class="btn btn-primary" onclick="saveDraft()">Save Draft</button>
+                </div>
+                </div>
+
+            <div id="micStatus" class="mic-status">
+                
+                </div>
 
             <div class="editor-container">
                 <div class="watermark">UGLY DRAFT</div>
@@ -619,6 +639,91 @@ function exportTxt() {
       setTimeout(() => URL.revokeObjectURL(url), 0);
       return;
     }
+
+      // ===== Voice Capture (Speech-to-Text) =====
+let recognition = null;
+let listening = false;
+
+function setupVoice() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) return false;
+
+  recognition = new SR();
+  recognition.continuous = true;
+  recognition.interimResults = true;
+  recognition.lang = 'en-US';
+
+  recognition.onstart = () => { listening = true; updateMicUI(); };
+  recognition.onend = () => { listening = false; updateMicUI(); };
+
+  recognition.onerror = (e) => {
+    console.error('Speech error:', e);
+    alert('Voice error: ' + e.error + '\nStopping mic.');
+    try { recognition.stop(); } catch {}
+  };
+
+  recognition.onresult = (event) => {
+    let finalText = '';
+    let interimText = '';
+
+    for (let i = event.resultIndex; i < event.results.length; i++) {
+      const res = event.results[i];
+      if (res.isFinal) finalText += res[0].transcript;
+      else interimText += res[0].transcript;
+    }
+
+    const editor = document.getElementById('editor');
+    if (finalText) {
+      const sep = editor.value && !editor.value.endsWith(' ') ? ' ' : '';
+      editor.value += sep + finalText.trim();
+      updateWordCount();
+    }
+
+    updateMicStatus(interimText);
+  };
+
+  return true;
+}
+
+function toggleVoice() {
+  if (!recognition) {
+    const ok = setupVoice();
+    if (!ok) {
+      alert("Speech recognition isn't supported here. Try Chrome on Android or desktop. (iOS Safari support is limited.)");
+      return;
+    }
+  }
+  if (listening) {
+    try { recognition.stop(); } catch {}
+  } else {
+    try { recognition.start(); } catch (e) {
+      // Some engines throw if already started — safe to ignore.
+      console.warn(e);
+    }
+  }
+}
+
+function updateMicUI() {
+  const btn = document.getElementById('micBtn');
+  const status = document.getElementById('micStatus');
+  if (!btn) return;
+  if (listening) {
+    btn.classList.add('mic-listening');
+    btn.textContent = '🛑 Stop Voice';
+    if (status) status.textContent = 'Listening… speak naturally';
+  } else {
+    btn.classList.remove('mic-listening');
+    btn.textContent = '🎤 Voice';
+    if (status) status.textContent = '';
+  }
+}
+
+function updateMicStatus(interim) {
+  const status = document.getElementById('micStatus');
+  if (!status) return;
+  status.textContent = interim ? '…' + interim : (listening ? 'Listening…' : '');
+}
+
 
     // Fallback: data URL (older iOS may open a new tab; user can Share/Save)
     const dataUrl = 'data:text/plain;charset=utf-8,' + encodeURIComponent(textRaw);
