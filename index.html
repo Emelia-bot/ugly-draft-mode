@@ -419,235 +419,224 @@
     </div>
 
     <script>
-        // State management
-        let currentMode = 'pure';
-        let startTime = null;
-        let timerInterval = null;
-        let currentDraftId = null;
+// ===== State =====
+let currentMode = 'pure';
+let startTime = null;
+let timerInterval = null;
+let currentDraftId = null;
 
-        const encouragements = [
-            "You've got this. Every word counts. Keep going! 💪",
-            "Progress over perfection. You're doing great! ✨",
-            "This draft doesn't need to be pretty. It just needs to exist. 🎨",
-            "Nobody's judging. Just let it flow! 🌊",
-            "Messy is beautiful. Keep writing! 🌟",
-            "You're braver than you think. Keep going! 🦁",
-            "Every draft starts ugly. That's the magic! ✨",
-            "Your words matter, even the messy ones. 💖"
-        ];
+const encouragements = [
+  "You've got this. Every word counts. Keep going! 💪",
+  "Progress over perfection. You're doing great! ✨",
+  "This draft doesn't need to be pretty. It just needs to exist. 🎨",
+  "Nobody's judging. Just let it flow! 🌊",
+  "Messy is beautiful. Keep writing! 🌟",
+  "You're braver than you think. Keep going! 🦁",
+  "Every draft starts ugly. That's the magic! ✨",
+  "Your words matter, even the messy ones. 💖"
+];
 
-        // Initialize
-        function init() {
-            loadDraftsList();
-            rotateEncouragement();
-        }
+// Optional: surface errors so we know instantly
+window.onerror = function (msg, src, line, col, err) {
+  console.error('JS Error:', msg, src, line + ':' + col, err);
+};
 
-        function startMode(mode) {
-            currentMode = mode;
-            if (mode === 'voice') {
-                alert('Voice Capture mode coming soon! For now, use Pure Creation mode. 🎤');
-                return;
-            }
-            
-            currentDraftId = Date.now().toString();
-            document.getElementById('welcomeScreen').classList.add('hidden');
-            document.getElementById('draftScreen').classList.remove('hidden');
-            document.getElementById('draftScreen').classList.add('show');
-            
-            startTimer();
-            document.getElementById('editor').focus();
-        }
+// ===== Init =====
+function init() {
+  loadDraftsList();
+  rotateEncouragement();
+}
+document.addEventListener('DOMContentLoaded', init);
 
-        function goHome() {
-            if (document.getElementById('editor').value.trim() !== '') {
-                if (!confirm('Save your draft before leaving?')) {
-                    // User chose not to save
-                } else {
-                    saveDraft();
-                }
-            }
-            
-            stopTimer();
-            document.getElementById('welcomeScreen').classList.remove('hidden');
-            document.getElementById('draftScreen').classList.remove('hidden');
-            document.getElementById('draftScreen').classList.add('hidden');
-            document.getElementById('editor').value = '';
-            currentDraftId = null;
-            loadDraftsList();
-        }
+// ===== Navigation =====
+function startMode(mode) {
+  currentMode = mode;
+  if (mode === 'voice') {
+    alert('Voice Capture mode coming soon! For now, use Pure Creation mode. 🎤');
+    return;
+  }
+  currentDraftId = Date.now().toString();
+  document.getElementById('welcomeScreen').classList.add('hidden');
+  const ds = document.getElementById('draftScreen');
+  ds.classList.remove('hidden');
+  ds.classList.add('show');
+  startTimer();
+  document.getElementById('editor').focus();
+}
 
-        function startTimer() {
-            startTime = Date.now();
-            timerInterval = setInterval(updateTimer, 1000);
-        }
-
-        function stopTimer() {
-            if (timerInterval) {
-                clearInterval(timerInterval);
-                timerInterval = null;
-            }
-            startTime = null;
-        }
-
-        function updateTimer() {
-            if (!startTime) return;
-            
-            const elapsed = Math.floor((Date.now() - startTime) / 1000);
-            const minutes = Math.floor(elapsed / 60);
-            const seconds = elapsed % 60;
-            
-            document.getElementById('timer').textContent = 
-                `${minutes}:${seconds.toString().padStart(2, '0')}`;
-        }
-
-        function updateWordCount() {
-            const text = document.getElementById('editor').value;
-            const words = text.trim().split(/\s+/).filter(word => word.length > 0).length;
-            document.getElementById('wordCount').textContent = `${words} words`;
-        }
-
-        function saveDraft() {
-            const content = document.getElementById('editor').value;
-            if (content.trim() === '') {
-                alert('Write something first! Even if it\'s messy. 💪');
-                return;
-            }
-
-   function exportTxt() {
-  try {
-    const content = document.getElementById('editor').value || '';
-    const text = content.trim();
-    if (!text) {
-      alert('Nothing to export yet—type a few words first.');
-      return;
+function goHome() {
+  const editor = document.getElementById('editor');
+  if (editor.value.trim() !== '') {
+    if (confirm('Save your draft before leaving?')) {
+      saveDraft();
     }
+  }
+  stopTimer();
+  document.getElementById('welcomeScreen').classList.remove('hidden');
+  const ds = document.getElementById('draftScreen');
+  ds.classList.remove('show');
+  ds.classList.add('hidden');
+  editor.value = '';
+  currentDraftId = null;
+  loadDraftsList();
+}
+
+// ===== Timer & Count =====
+function startTimer() {
+  startTime = Date.now();
+  timerInterval = setInterval(updateTimer, 1000);
+}
+function stopTimer() {
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = null;
+  startTime = null;
+}
+function updateTimer() {
+  if (!startTime) return;
+  const elapsed = Math.floor((Date.now() - startTime) / 1000);
+  const m = Math.floor(elapsed / 60);
+  const s = String(elapsed % 60).padStart(2, '0');
+  document.getElementById('timer').textContent = `${m}:${s}`;
+}
+function updateWordCount() {
+  const text = document.getElementById('editor').value;
+  const words = text.trim().split(/\s+/).filter(Boolean).length;
+  document.getElementById('wordCount').textContent = `${words} words`;
+}
+
+// ===== Drafts (localStorage) =====
+function saveDraft() {
+  const content = document.getElementById('editor').value;
+  if (content.trim() === '') {
+    alert("Write something first! Even if it's messy. 💪");
+    return;
+  }
+  const drafts = JSON.parse(localStorage.getItem('uglyDrafts') || '[]');
+  const words = content.trim().split(/\s+/).filter(Boolean).length;
+  const draft = {
+    id: currentDraftId || Date.now().toString(),
+    content,
+    words,
+    date: new Date().toISOString(),
+    mode: currentMode
+  };
+  const i = drafts.findIndex(d => d.id === draft.id);
+  if (i !== -1) drafts[i] = draft; else drafts.unshift(draft);
+  currentDraftId = draft.id;
+  localStorage.setItem('uglyDrafts', JSON.stringify(drafts));
+  alert('Draft saved! Keep being awesome! ✨');
+}
+
+function loadDraftsList() {
+  const drafts = JSON.parse(localStorage.getItem('uglyDrafts') || '[]');
+  const container = document.getElementById('draftsList');
+  if (!container) return;
+  if (drafts.length === 0) { container.innerHTML = ''; return; }
+  container.innerHTML = '<h2 style="color:#ff6b9d;margin-bottom:20px;">Your Drafts</h2>';
+  drafts.forEach(draft => {
+    const date = new Date(draft.date);
+    const dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+    const preview = draft.content.substring(0, 100) + (draft.content.length > 100 ? '...' : '');
+    const item = document.createElement('div');
+    item.className = 'draft-item';
+    item.innerHTML = `
+      <div class="draft-meta">
+        <span class="draft-date">${dateStr}</span>
+        <span class="draft-stats">${draft.words} words</span>
+        <button class="btn delete-btn" data-id="${draft.id}">Delete</button>
+      </div>
+      <div class="draft-preview">${preview}</div>
+    `;
+    item.addEventListener('click', (e) => {
+      if (e.target && e.target.matches('.delete-btn')) return;
+      loadDraft(draft.id);
+    });
+    item.querySelector('.delete-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteDraft(draft.id);
+    });
+    container.appendChild(item);
+  });
+}
+
+function loadDraft(id) {
+  const drafts = JSON.parse(localStorage.getItem('uglyDrafts') || '[]');
+  const draft = drafts.find(d => d.id === id);
+  if (!draft) return;
+  currentDraftId = id;
+  document.getElementById('editor').value = draft.content;
+  // show editor if not visible
+  document.getElementById('welcomeScreen').classList.add('hidden');
+  const ds = document.getElementById('draftScreen');
+  ds.classList.remove('hidden');
+  ds.classList.add('show');
+  updateWordCount();
+  if (!timerInterval) startTimer();
+}
+
+function deleteDraft(id) {
+  if (!confirm('Delete this draft? This cannot be undone.')) return;
+  let drafts = JSON.parse(localStorage.getItem('uglyDrafts') || '[]');
+  drafts = drafts.filter(d => d.id !== id);
+  localStorage.setItem('uglyDrafts', JSON.stringify(drafts));
+  loadDraftsList();
+}
+
+// ===== Encouragement =====
+function rotateEncouragement() {
+  setInterval(() => {
+    const el = document.getElementById('encouragement');
+    if (!el) return;
+    const random = encouragements[Math.floor(Math.random() * encouragements.length)];
+    el.textContent = random;
+  }, 10000);
+}
+
+// ===== Export (.txt) — safe cross-browser =====
+function exportTxt() {
+  try {
+    const editor = document.getElementById('editor');
+    if (!editor) { alert('Editor not found'); return; }
+    const textRaw = editor.value || '';
+    if (textRaw.trim() === '') { alert('Nothing to export yet—type a few words first.'); return; }
 
     const d = new Date();
     const pad = n => n.toString().padStart(2, '0');
     const filename = `ugly-draft-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}.txt`;
 
-    // 1) Try the Web Share API (nice on mobile if a files share is supported)
-    if (navigator.canShare && window.Blob) {
-      const file = new File([text], filename, { type: 'text/plain' });
-      if (navigator.canShare({ files: [file] })) {
-        navigator.share({ files: [file], title: 'Ugly Draft', text: 'My draft' })
-          .catch(() => {/* user canceled share */});
-        return;
-      }
-    }
-
-    // 2) Try Blob + object URL (best for modern desktop/mobile)
-    if (window.Blob && window.URL && 'download' in HTMLAnchorElement.prototype) {
-      const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+    // Prefer Blob URL when supported
+    const supportsDownload = 'download' in document.createElement('a');
+    if (window.Blob && window.URL && supportsDownload) {
+      const normalized = textRaw.replace(/\r?\n/g, '\r\n'); // friendlier on Windows
+      const blob = new Blob([normalized], { type: 'text/plain;charset=utf-8' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = filename;         // some iOS versions ignore this
-      a.rel = 'noopener';
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       a.remove();
-      URL.revokeObjectURL(url);
+      setTimeout(() => URL.revokeObjectURL(url), 0);
       return;
     }
 
-    // 3) Data URL fallback (helps on older Safari/iOS)
-    const dataUrl = 'data:text/plain;charset=utf-8,' + encodeURIComponent(text);
+    // Fallback: data URL (older iOS may open a new tab; user can Share/Save)
+    const dataUrl = 'data:text/plain;charset=utf-8,' + encodeURIComponent(textRaw);
     const a = document.createElement('a');
     a.href = dataUrl;
     a.download = filename;
-    a.target = '_blank';             // open in new tab if download ignored
+    a.target = '_blank';
     a.rel = 'noopener';
     document.body.appendChild(a);
     a.click();
     a.remove();
-
-    // 4) Last resort: copy to clipboard & inform user
-    if (!/CriOS|FxiOS|iPhone|iPad|iPod/i.test(navigator.userAgent)) return;
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(text).then(() => {
-        alert("Your draft was copied to the clipboard (Safari couldn't download a file). Paste into Notes or any editor.");
-      });
-    } else {
-      alert("If no file downloaded, select all text and copy it manually.");
-    }
   } catch (e) {
     console.error(e);
-    alert('Export failed. Try on desktop or let me know what device/browser you’re using.');
+    alert('Export failed. Try on desktop, or tell me your device/browser.');
   }
 }
+</script>
 
-        function loadDraftsList() {
-            const drafts = JSON.parse(localStorage.getItem('uglyDrafts') || '[]');
-            const container = document.getElementById('draftsList');
-            
-            if (drafts.length === 0) {
-                container.innerHTML = '';
-                return;
-            }
-
-            container.innerHTML = '<h2 style="color: #ff6b9d; margin-bottom: 20px;">Your Drafts</h2>';
-            
-            drafts.forEach(draft => {
-                const date = new Date(draft.date);
-                const dateStr = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-                const preview = draft.content.substring(0, 100) + (draft.content.length > 100 ? '...' : '');
-                
-                const item = document.createElement('div');
-                item.className = 'draft-item';
-                item.innerHTML = `
-                    <div class="draft-meta">
-                        <span class="draft-date">${dateStr}</span>
-                        <span class="draft-stats">${draft.words} words</span>
-                        <button class="btn delete-btn" onclick="deleteDraft('${draft.id}', event)">Delete</button>
-                    </div>
-                    <div class="draft-preview">${preview}</div>
-                `;
-                
-                item.onclick = (e) => {
-                    if (!e.target.classList.contains('delete-btn')) {
-                        loadDraft(draft.id);
-                    }
-                };
-                
-                container.appendChild(item);
-            });
-        }
-
-        function loadDraft(id) {
-            const drafts = JSON.parse(localStorage.getItem('uglyDrafts') || '[]');
-            const draft = drafts.find(d => d.id === id);
-            
-            if (draft) {
-                currentDraftId = id;
-                document.getElementById('editor').value = draft.content;
-                startMode(draft.mode);
-                updateWordCount();
-            }
-        }
-
-        function deleteDraft(id, event) {
-            event.stopPropagation();
-            
-            if (!confirm('Delete this draft? This cannot be undone.')) {
-                return;
-            }
-            
-            let drafts = JSON.parse(localStorage.getItem('uglyDrafts') || '[]');
-            drafts = drafts.filter(d => d.id !== id);
-            localStorage.setItem('uglyDrafts', JSON.stringify(drafts));
-            loadDraftsList();
-        }
-
-        function rotateEncouragement() {
-            setInterval(() => {
-                const random = encouragements[Math.floor(Math.random() * encouragements.length)];
-                document.getElementById('encouragement').textContent = random;
-            }, 10000);
-        }
-
-        // Initialize on load
-        init();
-    </script>
+   
 </body>
 </html>
