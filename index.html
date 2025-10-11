@@ -376,6 +376,76 @@
         .show {
             display: block;
         }
+
+        /* Smoothen theme transitions */
+body, .header, .editor-container, .draft-item, .mode-btn {
+  transition: background-color .25s, color .25s, border-color .25s, box-shadow .25s;
+}
+
+/* DARK THEME */
+body.dark {
+  background: linear-gradient(135deg, #0e0f12 0%, #111827 50%, #0b0b0c 100%);
+  color: #e5e7eb;
+}
+
+.dark .header,
+.dark .editor-container,
+.dark .draft-item,
+.dark .mode-btn {
+  background: #0f172a;             /* slate-900 */
+  border-color: #334155;           /* slate-600 */
+  box-shadow: 4px 4px 0 rgba(0,0,0,.6);
+}
+
+.dark .badge {
+  background: #1f2937;             /* gray-800 */
+  color: #f472b6;                   /* pink-400 */
+  border-color: #f472b6;
+}
+
+.dark .timer,
+.dark .word-count,
+.dark .draft-date,
+.dark .draft-preview,
+.dark .tagline,
+.dark .mode-desc {
+  color: #cbd5e1;                   /* slate-300 */
+}
+
+.dark h1,
+.dark .mode-title,
+.dark .draft-stats,
+.dark .encouragement,
+.dark .watermark {
+  color: #f472b6;                   /* pink-400 */
+}
+
+.dark .btn {
+  background: #0f172a;
+  color: #e5e7eb;
+  border-color: #475569;            /* slate-500 */
+  box-shadow: 2px 2px 0 rgba(0,0,0,.6);
+}
+.dark .btn:hover { box-shadow: 3px 3px 0 rgba(0,0,0,.7); }
+.dark .btn:active { box-shadow: 1px 1px 0 rgba(0,0,0,.5); }
+
+.dark .btn-primary,
+.dark .mic-listening {
+  background: #f472b6;              /* pink-400 */
+  color: #0b0b0c;
+  border-color: #f472b6;
+}
+
+.dark .delete-btn {
+  background: #ef4444;              /* red-500 */
+  border-color: #ef4444;
+  color: #fff;
+}
+
+.dark textarea {
+  color: #e5e7eb;
+}
+
     </style>
 </head>
 <body>
@@ -412,11 +482,14 @@
                     <span class="timer" id="timer">0:00</span>
                     <span class="word-count" id="wordCount">0 words</span>
                 </div>
-        <div class="header-actions">
-                    <button class="btn" id="micBtn" onclick="toggleVoice()">🎤 Voice</button>
-                    <button class="btn" onclick="exportTxt()">Export .txt</button>
-                      <button class="btn btn-primary" onclick="saveDraft()">Save Draft</button>
-                </div>
+      
+                <div class="header-actions">
+              <button class="btn" id="themeBtn" onclick="toggleTheme()" aria-label="Toggle theme">🌙 Dark</button>
+              <button class="btn" id="micBtn" onclick="toggleVoice()">🎤 Voice</button>
+              <button class="btn" onclick="exportTxt()">Export .txt</button>
+              <button class="btn btn-primary" onclick="saveDraft()">Save Draft</button>
+                    </div>
+
                 </div>
 
             <div id="micStatus" class="mic-status">
@@ -460,6 +533,30 @@ const encouragements = [
 window.onerror = function (msg, src, line, col, err) {
   console.error('JS Error:', msg, src, line + ':' + col, err);
 };
+
+        // ===== Theme (dark/light) =====
+const THEME_KEY = 'udm-theme';
+
+function applyTheme(theme) {
+  const isDark = theme === 'dark';
+  document.body.classList.toggle('dark', isDark);
+
+  const btn = document.getElementById('themeBtn');
+  if (btn) btn.textContent = isDark ? '☀️ Light' : '🌙 Dark';
+
+  // Update browser UI color (mobile address bar)
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute('content', isDark ? '#0f172a' : '#ff6b9d');
+}
+
+function toggleTheme() {
+  const current = localStorage.getItem(THEME_KEY) ||
+                  (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  const next = current === 'dark' ? 'light' : 'dark';
+  localStorage.setItem(THEME_KEY, next);
+  applyTheme(next);
+}
+
 
 // ===== Init =====
 function init() {
