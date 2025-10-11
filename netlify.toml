@@ -11,3 +11,4 @@
     X-Content-Type-Options = "nosniff"
     X-Frame-Options = "DENY"
     Permissions-Policy = "microphone=(self), geolocation=(), camera=()"
+Content-Security-Policy = "default-src 'self' blob: data:; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com; connect-src 'self' https://cloudflareinsights.com https://region1.cloudflareinsights.com https://*.cloudflareinsights.com; manifest-src 'self'; frame-ancestors 'none'"
