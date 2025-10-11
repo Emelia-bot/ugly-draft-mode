@@ -377,6 +377,40 @@
             display: block;
         }
 
+        /* Mobile header layout fix */
+@media (max-width: 640px) {
+  .header {
+    flex-direction: column;       /* stack rows */
+    align-items: stretch;         /* make rows full width */
+    gap: 12px;
+  }
+
+  .header-left {
+    width: 100%;
+    justify-content: flex-start;
+    gap: 10px;
+  }
+
+  .header-actions {
+    width: 100%;
+    display: flex;
+    flex-wrap: wrap;              /* allow wrapping */
+    gap: 10px;
+  }
+
+  /* Make buttons responsive */
+  .header-actions .btn {
+    flex: 1 1 calc(50% - 10px);   /* two buttons per row on small screens */
+    min-width: 140px;             /* prevent tiny buttons */
+  }
+
+  /* Make the primary action span full width on its own row */
+  .header-actions .btn.btn-primary {
+    flex-basis: 100%;
+  }
+}
+
+
         /* Smoothen theme transitions */
 body, .header, .editor-container, .draft-item, .mode-btn {
   transition: background-color .25s, color .25s, border-color .25s, box-shadow .25s;
