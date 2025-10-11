@@ -520,6 +520,7 @@ body.dark {
                 <div class="header-actions">
               <button class="btn" id="themeBtn" onclick="toggleTheme()" aria-label="Toggle theme">🌙 Dark</button>
               <button class="btn" id="micBtn" onclick="toggleVoice()">🎤 Voice</button>
+             <button class="btn" onclick="shareApp()">Share</button>
               <button class="btn" onclick="exportTxt()">Export .txt</button>
               <button class="btn btn-primary" onclick="saveDraft()">Save Draft</button>
                     </div>
@@ -794,6 +795,22 @@ function exportTxt() {
     alert('Export failed. Try on desktop, or tell me your device/browser.');
   }
 }
+
+    function shareApp() {
+  const url = window.location.href.split('#')[0];
+  const data = {
+    title: 'Ugly Draft Mode',
+    text: 'A safe space for messy first drafts — try it:',
+    url
+  };
+  if (navigator.share) {
+    navigator.share(data).catch(() => {/* user canceled */});
+  } else {
+    navigator.clipboard?.writeText(`${data.text} ${data.url}`);
+    alert('Link copied. Share it anywhere!');
+  }
+}
+
         // ===== Voice Capture (minimal + robust) =====
 let recognition = null;
 let listening = false;
