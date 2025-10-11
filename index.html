@@ -702,7 +702,6 @@ function setupVoice() {
 }
 
 function toggleVoice() {
-  // Must be user-gesture driven (button click) — good.
   if (!voiceSupported()) {
     alert("Voice recognition isn't supported in this browser. Try Chrome on desktop or Android.\niOS Safari doesn't support Web Speech reliably.");
     return;
@@ -711,12 +710,19 @@ function toggleVoice() {
     const ok = setupVoice();
     if (!ok) { alert("Couldn't start voice recognition here."); return; }
   }
+
+  // If the engine thinks it's running, stop before (re)starting
+  try { recognition.stop(); } catch {}
   if (listening) {
-    try { recognition.stop(); } catch {}
-  } else {
-    try { recognition.start(); } catch (e) { console.warn(e); }
+    // we just stopped; UI will update on onend
+    return;
   }
+  // Start after a tiny tick to let onend fire cleanly
+  setTimeout(() => {
+    try { recognition.start(); } catch (e) { console.warn(e); }
+  }, 120);
 }
+
 
 function updateMicUI() {
   const btn = document.getElementById('micBtn');
