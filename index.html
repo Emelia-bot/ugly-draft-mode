@@ -560,10 +560,16 @@ function toggleTheme() {
 
 // ===== Init =====
 function init() {
+  // theme from saved preference or system
+  const saved = localStorage.getItem(THEME_KEY) ||
+                (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+  applyTheme(saved);
+
   loadDraftsList();
   rotateEncouragement();
-  updateMicUI();
+  updateMicUI(); // (you already have this)
 }
+
 document.addEventListener('DOMContentLoaded', init);
 
 // ===== Navigation =====
