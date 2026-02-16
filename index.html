@@ -486,6 +486,99 @@ body.dark {
   color: #e5e7eb;
 }
 
+/* Toast Notifications */
+.toast-container {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  pointer-events: none;
+}
+
+.toast {
+  background: white;
+  border: 3px solid #ff6b9d;
+  border-radius: 14px;
+  padding: 14px 22px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  box-shadow: 4px 4px 0px rgba(0,0,0,0.1);
+  transform: translateX(120%);
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.3s;
+  pointer-events: auto;
+  max-width: 340px;
+}
+.toast.show { transform: translateX(0); }
+.toast.hide { transform: translateX(120%); opacity: 0; }
+.toast.error { border-color: #ff4757; color: #ff4757; }
+.toast.success { border-color: #2ed573; }
+
+.dark .toast {
+  background: #1e293b;
+  color: #e5e7eb;
+  border-color: #f472b6;
+  box-shadow: 4px 4px 0 rgba(0,0,0,.6);
+}
+.dark .toast.error { border-color: #ef4444; color: #fca5a5; }
+.dark .toast.success { border-color: #34d399; }
+
+/* Focus Mode */
+.focus-mode .header {
+  transform: translateY(-120%);
+  opacity: 0;
+  position: absolute;
+  width: calc(100% - 32px);
+  pointer-events: none;
+}
+.focus-mode .encouragement { display: none; }
+.focus-mode .editor-container {
+  min-height: 80vh;
+  border-color: transparent;
+  box-shadow: none;
+}
+.focus-mode textarea { min-height: 75vh; }
+
+.focus-exit-hint {
+  display: none;
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.6);
+  color: white;
+  padding: 8px 18px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-family: inherit;
+  opacity: 0;
+  transition: opacity 0.5s;
+}
+.focus-mode .focus-exit-hint { display: block; opacity: 1; }
+
+/* Auto-save indicator */
+.auto-save-indicator {
+  font-size: 0.8rem;
+  color: #999;
+  transition: opacity 0.3s;
+}
+.auto-save-indicator.saving { color: #ff6b9d; }
+.dark .auto-save-indicator { color: #64748b; }
+.dark .auto-save-indicator.saving { color: #f472b6; }
+
+/* Encouragement fade transition */
+.encouragement {
+  transition: opacity 0.5s ease;
+}
+.encouragement.fade-out { opacity: 0; }
+
+@media (max-width: 640px) {
+  .toast-container { top: 10px; right: 10px; left: 10px; }
+  .toast { max-width: 100%; }
+}
+
     </style>
     <!-- Cloudflare Web Analytics -->
     <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "32b18550903d4fd3b7cbcacb57f470ff"}'>
@@ -511,7 +604,7 @@ body.dark {
                 <div class="mode-btn" onclick="startMode('voice')">
                     <div class="mode-icon">🎤</div>
                     <div class="mode-title">Voice Capture</div>
-                    <div class="mode-desc">Messy thoughts → Draft ready (coming soon)</div>
+                    <div class="mode-desc">Speak your messy thoughts — they become your draft</div>
                 </div>
             </div>
 
@@ -526,11 +619,13 @@ body.dark {
                     <span class="badge">Nobody's Watching 👀</span>
                     <span class="timer" id="timer">0:00</span>
                     <span class="word-count" id="wordCount">0 words</span>
+                    <span class="auto-save-indicator" id="autoSaveIndicator"></span>
                 </div>
       
                 <div class="header-actions">
               <button class="btn" id="themeBtn" onclick="toggleTheme()" aria-label="Toggle theme">🌙 Dark</button>
               <button class="btn" id="micBtn" onclick="toggleVoice()">🎤 Voice</button>
+             <button class="btn" onclick="toggleFocus()">Focus</button>
              <button class="btn" onclick="shareApp()">Share</button>
               <button class="btn" onclick="exportTxt()">Export .txt</button>
               <button class="btn btn-primary" onclick="saveDraft()">Save Draft</button>
@@ -557,6 +652,9 @@ body.dark {
         </div>
     </div>
 
+    <div class="toast-container" id="toastContainer"></div>
+    <div class="focus-exit-hint" id="focusHint">Press Escape or Ctrl+Shift+F to exit focus mode</div>
+
     <script>
 // ===== State =====
 let currentMode = 'pure';
@@ -579,6 +677,22 @@ const encouragements = [
 window.onerror = function (msg, src, line, col, err) {
   console.error('JS Error:', msg, src, line + ':' + col, err);
 };
+
+// ===== Toast Notifications =====
+function showToast(message, type = 'info', duration = 3000) {
+  const container = document.getElementById('toastContainer');
+  if (!container) return;
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.textContent = message;
+  container.appendChild(toast);
+  requestAnimationFrame(() => toast.classList.add('show'));
+  setTimeout(() => {
+    toast.classList.add('hide');
+    toast.addEventListener('transitionend', () => toast.remove(), { once: true });
+    setTimeout(() => toast.remove(), 500); // fallback cleanup
+  }, duration);
+}
 
         // ===== Theme (dark/light) =====
 const THEME_KEY = 'udm-theme';
@@ -621,8 +735,8 @@ document.addEventListener('DOMContentLoaded', init);
 // ===== Navigation =====
 function startMode(mode) {
   currentMode = mode;
-  if (mode === 'voice') {
-    alert('Voice Capture mode coming soon! For now, use Pure Creation mode. 🎤');
+  if (mode === 'voice' && !voiceSupported()) {
+    showToast("Voice recognition isn't supported in this browser. Try Chrome on desktop or Android.", 'error');
     return;
   }
   currentDraftId = Date.now().toString();
@@ -631,17 +745,27 @@ function startMode(mode) {
   ds.classList.remove('hidden');
   ds.classList.add('show');
   startTimer();
+  startAutoSave();
   document.getElementById('editor').focus();
+
+  // Auto-start voice if in voice mode
+  if (mode === 'voice') {
+    setTimeout(() => toggleVoice(), 300);
+  }
 }
 
 function goHome() {
+  if (focusActive) toggleFocus();
   const editor = document.getElementById('editor');
   if (editor.value.trim() !== '') {
     if (confirm('Save your draft before leaving?')) {
       saveDraft();
     }
   }
+  // Stop voice if active
+  if (listening && recognition) { try { recognition.stop(); } catch {} }
   stopTimer();
+  stopAutoSave();
   document.getElementById('welcomeScreen').classList.remove('hidden');
   const ds = document.getElementById('draftScreen');
   ds.classList.remove('show');
@@ -671,14 +795,57 @@ function updateTimer() {
 function updateWordCount() {
   const text = document.getElementById('editor').value;
   const words = text.trim().split(/\s+/).filter(Boolean).length;
-  document.getElementById('wordCount').textContent = `${words} words`;
+  const chars = text.length;
+  document.getElementById('wordCount').textContent = `${words} words · ${chars} chars`;
+}
+
+// ===== Auto-save =====
+let autoSaveInterval = null;
+let lastAutoSavedContent = '';
+
+function startAutoSave() {
+  stopAutoSave();
+  autoSaveInterval = setInterval(() => {
+    const editor = document.getElementById('editor');
+    if (!editor) return;
+    const content = editor.value;
+    if (content.trim() === '' || content === lastAutoSavedContent) return;
+
+    const drafts = JSON.parse(localStorage.getItem('uglyDrafts') || '[]');
+    const words = content.trim().split(/\s+/).filter(Boolean).length;
+    const draft = {
+      id: currentDraftId || Date.now().toString(),
+      content,
+      words,
+      date: new Date().toISOString(),
+      mode: currentMode
+    };
+    const i = drafts.findIndex(d => d.id === draft.id);
+    if (i !== -1) drafts[i] = draft; else drafts.unshift(draft);
+    currentDraftId = draft.id;
+    localStorage.setItem('uglyDrafts', JSON.stringify(drafts));
+    lastAutoSavedContent = content;
+
+    const indicator = document.getElementById('autoSaveIndicator');
+    if (indicator) {
+      indicator.textContent = 'Auto-saved';
+      indicator.classList.add('saving');
+      setTimeout(() => { indicator.classList.remove('saving'); }, 1500);
+    }
+  }, 30000);
+}
+
+function stopAutoSave() {
+  if (autoSaveInterval) clearInterval(autoSaveInterval);
+  autoSaveInterval = null;
+  lastAutoSavedContent = '';
 }
 
 // ===== Drafts (localStorage) =====
 function saveDraft() {
   const content = document.getElementById('editor').value;
   if (content.trim() === '') {
-    alert("Write something first! Even if it's messy. 💪");
+    showToast("Write something first! Even if it's messy. 💪");
     return;
   }
   const drafts = JSON.parse(localStorage.getItem('uglyDrafts') || '[]');
@@ -694,7 +861,7 @@ function saveDraft() {
   if (i !== -1) drafts[i] = draft; else drafts.unshift(draft);
   currentDraftId = draft.id;
   localStorage.setItem('uglyDrafts', JSON.stringify(drafts));
-  alert('Draft saved! Keep being awesome! ✨');
+  showToast('Draft saved! Keep being awesome! ✨', 'success');
 }
 
 function loadDraftsList() {
@@ -742,6 +909,7 @@ function loadDraft(id) {
   ds.classList.add('show');
   updateWordCount();
   if (!timerInterval) startTimer();
+  startAutoSave();
 }
 
 function deleteDraft(id) {
@@ -757,8 +925,12 @@ function rotateEncouragement() {
   setInterval(() => {
     const el = document.getElementById('encouragement');
     if (!el) return;
-    const random = encouragements[Math.floor(Math.random() * encouragements.length)];
-    el.textContent = random;
+    el.classList.add('fade-out');
+    setTimeout(() => {
+      const random = encouragements[Math.floor(Math.random() * encouragements.length)];
+      el.textContent = random;
+      el.classList.remove('fade-out');
+    }, 500);
   }, 10000);
 }
 
@@ -766,9 +938,9 @@ function rotateEncouragement() {
 function exportTxt() {
   try {
     const editor = document.getElementById('editor');
-    if (!editor) { alert('Editor not found'); return; }
+    if (!editor) { showToast('Editor not found', 'error'); return; }
     const textRaw = editor.value || '';
-    if (textRaw.trim() === '') { alert('Nothing to export yet—type a few words first.'); return; }
+    if (textRaw.trim() === '') { showToast('Nothing to export yet — type a few words first.'); return; }
 
     const d = new Date();
     const pad = n => n.toString().padStart(2, '0');
@@ -803,7 +975,7 @@ function exportTxt() {
     a.remove();
   } catch (e) {
     console.error(e);
-    alert('Export failed. Try on desktop, or tell me your device/browser.');
+    showToast('Export failed. Try on desktop, or tell me your device/browser.', 'error');
   }
 }
 
@@ -818,7 +990,7 @@ function exportTxt() {
     navigator.share(data).catch(() => {/* user canceled */});
   } else {
     navigator.clipboard?.writeText(`${data.text} ${data.url}`);
-    alert('Link copied. Share it anywhere!');
+    showToast('Link copied. Share it anywhere!', 'success');
   }
 }
 
@@ -843,7 +1015,7 @@ function setupVoice() {
   recognition.onend   = () => { listening = false; updateMicUI(); };
   recognition.onerror = (e) => {
     console.error('Speech error:', e);
-    alert('Voice error: ' + e.error + '\nStopping mic.');
+    showToast('Voice error: ' + e.error + '. Stopping mic.', 'error');
     try { recognition.stop(); } catch {}
   };
 
@@ -869,12 +1041,12 @@ function setupVoice() {
 
 function toggleVoice() {
   if (!voiceSupported()) {
-    alert("Voice recognition isn't supported in this browser. Try Chrome on desktop or Android.\niOS Safari doesn't support Web Speech reliably.");
+    showToast("Voice recognition isn't supported here. Try Chrome on desktop or Android.", 'error');
     return;
   }
   if (!recognition) {
     const ok = setupVoice();
-    if (!ok) { alert("Couldn't start voice recognition here."); return; }
+    if (!ok) { showToast("Couldn't start voice recognition here.", 'error'); return; }
   }
 
   // If the engine thinks it's running, stop before (re)starting
@@ -909,7 +1081,48 @@ function updateMicUI() {
 
 // Initialize the status text once the page is ready
 document.addEventListener('DOMContentLoaded', () => {
-  updateMicUI(); // sets initial “supported / not supported” hint
+  updateMicUI(); // sets initial "supported / not supported" hint
+});
+
+// ===== Focus Mode =====
+let focusActive = false;
+
+function toggleFocus() {
+  const ds = document.getElementById('draftScreen');
+  if (!ds || ds.classList.contains('hidden')) return;
+  focusActive = !focusActive;
+  ds.classList.toggle('focus-mode', focusActive);
+  if (focusActive) {
+    document.getElementById('editor').focus();
+  }
+}
+
+// ===== Keyboard Shortcuts =====
+document.addEventListener('keydown', (e) => {
+  const drafting = !document.getElementById('draftScreen').classList.contains('hidden');
+  if (!drafting) return;
+
+  // Ctrl/Cmd + S → Save
+  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+    e.preventDefault();
+    saveDraft();
+  }
+  // Ctrl/Cmd + E → Export
+  if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+    e.preventDefault();
+    exportTxt();
+  }
+  // Ctrl/Cmd + Shift + F → Toggle focus mode
+  if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'F') {
+    e.preventDefault();
+    toggleFocus();
+  }
+  // Escape → exit focus mode, or go home
+  if (e.key === 'Escape') {
+    if (focusActive) {
+      toggleFocus();
+    }
+  }
 });
 
 </script>
